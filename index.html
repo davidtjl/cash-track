@@ -79,7 +79,7 @@ const CATS=[
   {id:"other",label:"Other",color:"#64748b",bg:"rgba(100,116,139,0.12)"},
 ];
 const catMap=Object.fromEntries(CATS.map(c=>[c.id,c]));
-const fmt=n=>"$"+n.toFixed(2);
+const fmt=n=>"₡"+n.toFixed(2);
 const today=new Date().toISOString().split("T")[0];
 
 let state={tab:"list",expenses:[],ready:false,amount:"",cat:"food",note:"",date:today};
@@ -140,7 +140,7 @@ function render(){
         <div>
           <label style="font-size:12px;color:var(--color-text-secondary);text-transform:uppercase;letter-spacing:0.5px;display:block;margin-bottom:7px">Amount</label>
           <div style="position:relative">
-            <span style="position:absolute;left:14px;top:50%;transform:translateY(-50%);font-size:22px;font-weight:500;color:var(--color-text-secondary)">$</span>
+            <span style="position:absolute;left:14px;top:50%;transform:translateY(-50%);font-size:22px;font-weight:500;color:var(--color-text-secondary)">₡</span>
             <input id="amtInput" type="number" placeholder="0.00" value="${state.amount}" oninput="state.amount=this.value"
               style="width:100%;font-size:28px;font-weight:700;background:var(--color-background-primary);border:0.5px solid var(--color-border-secondary);border-radius:12px;padding:13px 14px 13px 36px;box-sizing:border-box;letter-spacing:-1px;color:var(--color-text-primary);outline:none"/>
           </div>
