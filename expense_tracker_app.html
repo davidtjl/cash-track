@@ -1,0 +1,153 @@
+
+<div id="root" style="font-family:system-ui,sans-serif;max-width:420px;margin:0 auto;min-height:580px;display:flex;flex-direction:column;background:var(--color-background-secondary);border-radius:var(--border-radius-lg);overflow:hidden;border:0.5px solid var(--color-border-tertiary)"></div>
+
+<script>
+const CATS=[
+  {id:"food",label:"Food",color:"#d97706",bg:"rgba(245,158,11,0.12)"},
+  {id:"transport",label:"Transport",color:"#2563eb",bg:"rgba(59,130,246,0.12)"},
+  {id:"fun",label:"Fun",color:"#7c3aed",bg:"rgba(139,92,246,0.12)"},
+  {id:"health",label:"Health",color:"#059669",bg:"rgba(16,185,129,0.12)"},
+  {id:"shopping",label:"Shopping",color:"#db2777",bg:"rgba(236,72,153,0.12)"},
+  {id:"bills",label:"Bills",color:"#4f46e5",bg:"rgba(99,102,241,0.12)"},
+  {id:"other",label:"Other",color:"#64748b",bg:"rgba(100,116,139,0.12)"},
+];
+const catMap=Object.fromEntries(CATS.map(c=>[c.id,c]));
+const fmt=n=>"$"+n.toFixed(2);
+const today=new Date().toISOString().split("T")[0];
+
+let state={tab:"list",expenses:[],ready:false,amount:"",cat:"food",note:"",date:today};
+
+function save(){if(state.ready)window.storage.set("xp_v1",JSON.stringify(state.expenses)).catch(()=>{});}
+
+async function load(){
+  try{const r=await window.storage.get("xp_v1");if(r)state.expenses=JSON.parse(r.value);}catch(e){}
+  state.ready=true;render();
+}
+
+function del(id){state.expenses=state.expenses.filter(e=>e.id!==id);save();render();}
+
+function addExpense(){
+  const n=parseFloat(state.amount);
+  if(!n||n<=0)return;
+  state.expenses=[{id:Date.now().toString(),amount:n,cat:state.cat,note:state.note.trim(),date:state.date||today},...state.expenses];
+  state.amount="";state.note="";state.date=today;state.tab="list";
+  save();render();
+}
+
+function setTab(t){state.tab=t;render();}
+
+function render(){
+  const root=document.getElementById("root");
+  const total=state.expenses.reduce((s,e)=>s+e.amount,0);
+  const ym=new Date().toISOString().slice(0,7);
+  const monthTotal=state.expenses.filter(e=>e.date.startsWith(ym)).reduce((s,e)=>s+e.amount,0);
+  const byCat=CATS.map(c=>({...c,total:state.expenses.filter(e=>e.cat===c.id).reduce((s,e)=>s+e.amount,0)})).filter(c=>c.total>0).sort((a,b)=>b.total-a.total);
+
+  const listIcon=`<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><circle cx="3" cy="6" r="0.5" fill="currentColor"/><circle cx="3" cy="12" r="0.5" fill="currentColor"/><circle cx="3" cy="18" r="0.5" fill="currentColor"/></svg>`;
+  const addIcon=`<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>`;
+  const barIcon=`<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="18" y="3" width="4" height="18"/><rect x="10" y="8" width="4" height="13"/><rect x="2" y="13" width="4" height="8"/></svg>`;
+  const trashIcon=`<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg>`;
+
+  let content="";
+
+  if(state.tab==="list"){
+    if(state.expenses.length===0){
+      content=`<div style="text-align:center;color:var(--color-text-secondary);margin-top:70px;font-size:14px;padding:0 20px">No expenses yet.<br><br>Tap <strong>Add</strong> below to record your first one.</div>`;
+    } else {
+      content=state.expenses.map(e=>{
+        const c=catMap[e.cat]||CATS[6];
+        const shortNote=e.note?` · ${e.note.length>18?e.note.slice(0,18)+"…":e.note}`:"";
+        return `<div style="background:var(--color-background-primary);border-radius:12px;padding:11px 13px;display:flex;align-items:center;gap:11px;border:0.5px solid var(--color-border-tertiary)">
+          <div style="width:36px;height:36px;border-radius:9px;background:${c.bg};display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:${c.color};flex-shrink:0;letter-spacing:0.5px">${c.label.slice(0,2).toUpperCase()}</div>
+          <div style="flex:1;min-width:0">
+            <div style="font-weight:600;font-size:16px;letter-spacing:-0.3px">${fmt(e.amount)}</div>
+            <div style="font-size:12px;color:var(--color-text-secondary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${c.label}${shortNote} · ${e.date}</div>
+          </div>
+          <button onclick="del('${e.id}')" style="background:none;border:none;cursor:pointer;color:var(--color-text-secondary);padding:6px;display:flex;align-items:center;opacity:0.6">${trashIcon}</button>
+        </div>`;
+      }).join("");
+    }
+  } else if(state.tab==="add"){
+    content=`
+      <div style="display:flex;flex-direction:column;gap:18px">
+        <div>
+          <label style="font-size:12px;color:var(--color-text-secondary);text-transform:uppercase;letter-spacing:0.5px;display:block;margin-bottom:7px">Amount</label>
+          <div style="position:relative">
+            <span style="position:absolute;left:14px;top:50%;transform:translateY(-50%);font-size:22px;font-weight:500;color:var(--color-text-secondary)">$</span>
+            <input id="amtInput" type="number" placeholder="0.00" value="${state.amount}" oninput="state.amount=this.value"
+              style="width:100%;font-size:28px;font-weight:700;background:var(--color-background-primary);border:0.5px solid var(--color-border-secondary);border-radius:12px;padding:13px 14px 13px 36px;box-sizing:border-box;letter-spacing:-1px;color:var(--color-text-primary);outline:none"/>
+          </div>
+        </div>
+        <div>
+          <label style="font-size:12px;color:var(--color-text-secondary);text-transform:uppercase;letter-spacing:0.5px;display:block;margin-bottom:8px">Category</label>
+          <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:7px">
+            ${CATS.map(c=>`<button onclick="state.cat='${c.id}';render()" style="padding:10px 4px;border-radius:10px;border:${state.cat===c.id?`2px solid ${c.color}`:"0.5px solid var(--color-border-tertiary)"};background:${state.cat===c.id?c.bg:"var(--color-background-primary)"};cursor:pointer;font-size:11px;font-weight:${state.cat===c.id?700:400};color:${state.cat===c.id?c.color:"var(--color-text-secondary)"};text-align:center">${c.label}</button>`).join("")}
+          </div>
+        </div>
+        <div>
+          <label style="font-size:12px;color:var(--color-text-secondary);text-transform:uppercase;letter-spacing:0.5px;display:block;margin-bottom:7px">Note (optional)</label>
+          <input type="text" placeholder="What was this for?" value="${state.note}" oninput="state.note=this.value"
+            style="width:100%;background:var(--color-background-primary);border:0.5px solid var(--color-border-secondary);border-radius:12px;padding:11px 14px;box-sizing:border-box;font-size:15px;color:var(--color-text-primary);outline:none"/>
+        </div>
+        <div>
+          <label style="font-size:12px;color:var(--color-text-secondary);text-transform:uppercase;letter-spacing:0.5px;display:block;margin-bottom:7px">Date</label>
+          <input type="date" value="${state.date}" oninput="state.date=this.value"
+            style="width:100%;background:var(--color-background-primary);border:0.5px solid var(--color-border-secondary);border-radius:12px;padding:11px 14px;box-sizing:border-box;font-size:15px;color:var(--color-text-primary);outline:none"/>
+        </div>
+        <button onclick="addExpense()" style="background:#0f172a;color:white;border:none;border-radius:12px;padding:15px;font-size:16px;font-weight:600;cursor:pointer;margin-top:4px;letter-spacing:-0.2px">Add Expense</button>
+      </div>`;
+  } else {
+    if(byCat.length===0){
+      content=`<div style="text-align:center;color:var(--color-text-secondary);margin-top:70px;font-size:14px">No data yet.</div>`;
+    } else {
+      const summaryCards=`
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:18px">
+          <div style="background:var(--color-background-primary);border-radius:12px;border:0.5px solid var(--color-border-tertiary);padding:14px">
+            <div style="font-size:11px;color:var(--color-text-secondary);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:5px">All time</div>
+            <div style="font-size:22px;font-weight:700;letter-spacing:-0.5px">${fmt(total)}</div>
+            <div style="font-size:11px;color:var(--color-text-secondary);margin-top:2px">${state.expenses.length} entries</div>
+          </div>
+          <div style="background:var(--color-background-primary);border-radius:12px;border:0.5px solid var(--color-border-tertiary);padding:14px">
+            <div style="font-size:11px;color:var(--color-text-secondary);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:5px">This month</div>
+            <div style="font-size:22px;font-weight:700;letter-spacing:-0.5px">${fmt(monthTotal)}</div>
+            <div style="font-size:11px;color:var(--color-text-secondary);margin-top:2px">${state.expenses.filter(e=>e.date.startsWith(ym)).length} entries</div>
+          </div>
+        </div>`;
+      content=summaryCards+byCat.map(c=>`
+        <div style="background:var(--color-background-primary);border-radius:12px;padding:14px;border:0.5px solid var(--color-border-tertiary);margin-bottom:9px">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:9px">
+            <div style="display:flex;align-items:center;gap:9px">
+              <div style="width:10px;height:10px;border-radius:3px;background:${c.color}"></div>
+              <span style="font-weight:500;font-size:14px">${c.label}</span>
+            </div>
+            <span style="font-weight:700;font-size:14px;color:${c.color}">${fmt(c.total)}</span>
+          </div>
+          <div style="height:5px;background:var(--color-background-secondary);border-radius:3px;overflow:hidden">
+            <div style="height:100%;width:${(c.total/total*100).toFixed(1)}%;background:${c.color};border-radius:3px;transition:width 0.3s"></div>
+          </div>
+          <div style="font-size:11px;color:var(--color-text-secondary);margin-top:5px">${(c.total/total*100).toFixed(1)}% of total</div>
+        </div>`).join("");
+    }
+  }
+
+  const tabs=[{id:"list",label:"Expenses",icon:listIcon},{id:"add",label:"Add",icon:addIcon},{id:"stats",label:"Stats",icon:barIcon}];
+
+  root.innerHTML=`
+    <div style="background:#0f172a;color:white;padding:22px 20px 18px;flex-shrink:0">
+      <div style="font-size:12px;opacity:0.5;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:3px">Total spent</div>
+      <div style="font-size:38px;font-weight:800;letter-spacing:-1.5px;margin-bottom:2px">${fmt(total)}</div>
+      <div style="font-size:12px;opacity:0.45">This month: ${fmt(monthTotal)}</div>
+    </div>
+    <div style="flex:1;padding:16px;overflow-y:auto;display:flex;flex-direction:column;gap:9px">${content}</div>
+    <div style="display:flex;background:var(--color-background-primary);border-top:0.5px solid var(--color-border-tertiary);padding:10px 0 14px;flex-shrink:0">
+      ${tabs.map(t=>`<button onclick="setTab('${t.id}')" style="flex:1;background:none;border:none;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:4px;padding:4px 0;color:${state.tab===t.id?"#0f172a":"var(--color-text-secondary)"};font-size:11px;font-weight:${state.tab===t.id?700:400}">
+        ${t.icon}
+        ${t.label}
+      </button>`).join("")}
+    </div>
+  `;
+  if(state.tab==="add"){const el=document.getElementById("amtInput");if(el)el.focus();}
+}
+
+load();
+</script>
