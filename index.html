@@ -84,10 +84,10 @@ const today=new Date().toISOString().split("T")[0];
 
 let state={tab:"list",expenses:[],ready:false,amount:"",cat:"food",note:"",date:today};
 
-function save(){if(state.ready)window.storage.set("xp_v1",JSON.stringify(state.expenses)).catch(()=>{});}
+function save(){if(state.ready)localStorage.setItem("xp_v1",JSON.stringify(state.expenses));}
 
 async function load(){
-  try{const r=await window.storage.get("xp_v1");if(r)state.expenses=JSON.parse(r.value);}catch(e){}
+  try{const r=localStorage.getItem("xp_v1");if(r)state.expenses=JSON.parse(r);}catch(e){}
   state.ready=true;render();
 }
 
