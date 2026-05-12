@@ -78,11 +78,17 @@ const CATS=[
   {id:"bills",label:"Bills",color:"#4f46e5",bg:"rgba(99,102,241,0.12)"},
   {id:"other",label:"Other",color:"#64748b",bg:"rgba(100,116,139,0.12)"},
 ];
+const PAYMENTS=[
+  {id:"cash",label:"Cash",icon:"💵"},
+  {id:"transfer",label:"Transfer",icon:"🏦"},
+  {id:"sinpe",label:"SINPE",icon:"📱"},
+];
 const catMap=Object.fromEntries(CATS.map(c=>[c.id,c]));
+const paymentMap=Object.fromEntries(PAYMENTS.map(p=>[p.id,p]));
 const fmt=n=>"₡"+n.toFixed(2);
 const today=new Date().toISOString().split("T")[0];
 
-let state={tab:"list",expenses:[],ready:false,amount:"",cat:"food",note:"",date:today};
+let state={tab:"list",expenses:[],ready:false,amount:"",cat:"food",payment:"cash",note:"",date:today};
 
 function save(){if(state.ready)localStorage.setItem("xp_v1",JSON.stringify(state.expenses));}
 
@@ -96,8 +102,8 @@ function del(id){state.expenses=state.expenses.filter(e=>e.id!==id);save();rende
 function addExpense(){
   const n=parseFloat(state.amount);
   if(!n||n<=0)return;
-  state.expenses=[{id:Date.now().toString(),amount:n,cat:state.cat,note:state.note.trim(),date:state.date||today},...state.expenses];
-  state.amount="";state.note="";state.date=today;state.tab="list";
+  state.expenses=[{id:Date.now().toString(),amount:n,cat:state.cat,payment:state.payment,note:state.note.trim(),date:state.date||today},...state.expenses];
+  state.amount="";state.note="";state.payment="cash";state.date=today;state.tab="list";
   save();render();
 }
 
@@ -123,12 +129,13 @@ function render(){
     } else {
       content=state.expenses.map(e=>{
         const c=catMap[e.cat]||CATS[6];
+        const p=paymentMap[e.payment]||PAYMENTS[0];
         const shortNote=e.note?` · ${e.note.length>18?e.note.slice(0,18)+"…":e.note}`:"";
         return `<div style="background:var(--color-background-primary);border-radius:12px;padding:11px 13px;display:flex;align-items:center;gap:11px;border:0.5px solid var(--color-border-tertiary)">
           <div style="width:36px;height:36px;border-radius:9px;background:${c.bg};display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:${c.color};flex-shrink:0;letter-spacing:0.5px">${c.label.slice(0,2).toUpperCase()}</div>
           <div style="flex:1;min-width:0">
             <div style="font-weight:600;font-size:16px;letter-spacing:-0.3px">${fmt(e.amount)}</div>
-            <div style="font-size:12px;color:var(--color-text-secondary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${c.label}${shortNote} · ${e.date}</div>
+            <div style="font-size:12px;color:var(--color-text-secondary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${c.label}${shortNote} · ${p.label} · ${e.date}</div>
           </div>
           <button onclick="del('${e.id}')" style="background:none;border:none;cursor:pointer;color:var(--color-text-secondary);padding:6px;display:flex;align-items:center;opacity:0.6">${trashIcon}</button>
         </div>`;
@@ -149,6 +156,12 @@ function render(){
           <label style="font-size:12px;color:var(--color-text-secondary);text-transform:uppercase;letter-spacing:0.5px;display:block;margin-bottom:8px">Category</label>
           <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:7px">
             ${CATS.map(c=>`<button onclick="state.cat='${c.id}';render()" style="padding:10px 4px;border-radius:10px;border:${state.cat===c.id?`2px solid ${c.color}`:"0.5px solid var(--color-border-tertiary)"};background:${state.cat===c.id?c.bg:"var(--color-background-primary)"};cursor:pointer;font-size:11px;font-weight:${state.cat===c.id?700:400};color:${state.cat===c.id?c.color:"var(--color-text-secondary)"};text-align:center">${c.label}</button>`).join("")}
+          </div>
+        </div>
+        <div>
+          <label style="font-size:12px;color:var(--color-text-secondary);text-transform:uppercase;letter-spacing:0.5px;display:block;margin-bottom:8px">Payment Method</label>
+          <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:7px">
+            ${PAYMENTS.map(p=>`<button onclick="state.payment='${p.id}';render()" style="padding:10px 4px;border-radius:10px;border:${state.payment===p.id?`2px solid #0f172a`:"0.5px solid var(--color-border-tertiary)"};background:${state.payment===p.id?"#f3f4f6":"var(--color-background-primary)"};cursor:pointer;font-size:11px;font-weight:${state.payment===p.id?700:400};color:${state.payment===p.id?"#0f172a":"var(--color-text-secondary)"};text-align:center;display:flex;flex-direction:column;align-items:center;gap:4px"><span style="font-size:16px">${p.icon}</span>${p.label}</button>`).join("")}
           </div>
         </div>
         <div>
