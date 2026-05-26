@@ -89,16 +89,44 @@ const paymentMap=Object.fromEntries(PAYMENTS.map(p=>[p.id,p]));
 const fmt=n=>"₡"+n.toFixed(2);
 const today=new Date().toISOString().split("T")[0];
 
-let state={tab:"list",expenses:[],ready:false,amount:"",cat:"food",payment:"cash",note:"",date:today};
+let state={tab:"list",expenses:[],ready:false,amount:"",cat:"food",payment:"cash",note:"",date:today,monthlyTotals:{}};
 
-function save(){if(state.ready)localStorage.setItem("xp_v1",JSON.stringify(state.expenses));}
+function save(){
+  if(state.ready){
+    localStorage.setItem("xp_v1",JSON.stringify(state.expenses));
+    localStorage.setItem("xp_monthly",JSON.stringify(state.monthlyTotals));
+  }
+}
 
 async function load(){
-  try{const r=localStorage.getItem("xp_v1");if(r)state.expenses=JSON.parse(r);}catch(e){}
+  try{
+    const r=localStorage.getItem("xp_v1");
+    if(r)state.expenses=JSON.parse(r);
+    const m=localStorage.getItem("xp_monthly");
+    if(m)state.monthlyTotals=JSON.parse(m);
+  }catch(e){}
   state.ready=true;render();
 }
 
 function del(id){state.expenses=state.expenses.filter(e=>e.id!==id);save();render();}
+
+function clearCurrentMonth(){
+  const ym=new Date().toISOString().slice(0,7);
+  const monthExpenses=state.expenses.filter(e=>e.date.startsWith(ym));
+  const monthTotal=monthExpenses.reduce((s,e)=>s+e.amount,0);
+  
+  if(monthTotal>0){
+    const monthName=new Date(ym+"-01").toLocaleDateString("es-ES",{month:"long",year:"numeric"});
+    if(confirm(`¿Eliminar todas las entradas de ${monthName}?\n\nTotal del mes: ${fmt(monthTotal)}\n\nEste total se guardará en el historial.`)){
+      state.monthlyTotals[ym]=monthTotal;
+      state.expenses=state.expenses.filter(e=>!e.date.startsWith(ym));
+      save();
+      render();
+    }
+  } else {
+    alert("No hay entradas en el mes actual para eliminar.");
+  }
+}
 
 function addExpense(){
   const n=parseFloat(state.amount);
@@ -212,12 +240,25 @@ function render(){
   }
 
   const tabs=[{id:"list",label:"Expenses",icon:listIcon},{id:"add",label:"Add",icon:addIcon},{id:"stats",label:"Stats",icon:barIcon}];
+  
+  const monthlyHistory=Object.entries(state.monthlyTotals).sort((a,b)=>b[0].localeCompare(a[0])).map(([ym,total])=>{
+    const monthName=new Date(ym+"-01").toLocaleDateString("es-ES",{month:"long",year:"numeric"});
+    return `<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:0.5px solid rgba(255,255,255,0.1)">
+      <span style="font-size:12px;opacity:0.7">${monthName}</span>
+      <span style="font-size:12px;font-weight:600">${fmt(total)}</span>
+    </div>`;
+  }).join("");
 
   root.innerHTML=`
     <div style="background:#0f172a;color:white;padding:22px 20px 18px;flex-shrink:0">
       <div style="font-size:12px;opacity:0.5;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:3px">Total spent</div>
       <div style="font-size:38px;font-weight:800;letter-spacing:-1.5px;margin-bottom:2px">${fmt(total)}</div>
       <div style="font-size:12px;opacity:0.45">This month: ${fmt(monthTotal)}</div>
+      ${monthTotal>0?`<button onclick="clearCurrentMonth()" style="margin-top:12px;background:rgba(239,68,68,0.15);color:#fca5a5;border:0.5px solid rgba(239,68,68,0.3);border-radius:8px;padding:8px 14px;font-size:11px;font-weight:600;cursor:pointer;letter-spacing:0.3px">🗑️ Clear Current Month</button>`:""}
+      ${monthlyHistory?`<div style="margin-top:16px;padding-top:12px;border-top:0.5px solid rgba(255,255,255,0.1)">
+        <div style="font-size:11px;opacity:0.5;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px">Monthly History</div>
+        ${monthlyHistory}
+      </div>`:""}
     </div>
     <div style="flex:1;padding:16px;overflow-y:auto;display:flex;flex-direction:column;gap:9px">${content}</div>
     <div style="display:flex;background:var(--color-background-primary);border-top:0.5px solid var(--color-border-tertiary);padding:10px 0 14px;flex-shrink:0">
